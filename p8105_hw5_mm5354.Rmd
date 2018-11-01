@@ -1,0 +1,48 @@
+---
+title: "p8105_hw5_mm5354"
+author: "Mengran Ma"
+date: "2018/11/1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+```{r}
+csv_load_and_tidy = function(path) {
+  
+  df = read_csv(path) %>%
+    janitor::clean_names() %>% 
+    mutate(group = 0)
+    mutate(group = str_replace(group, 0))
+  df
+  
+}
+
+setwd("/Users/nadongma/Desktop/p8105_hw5_mm5354/data")
+
+list_of_csvs = list.files()
+
+output_csvs = map(list_of_excels, csv_load_and_tidy) %>% 
+  bind_rows()
+
+
+```
+
+```{r grouping_control_experimental}
+output_csvs = output_csvs %>% 
+  mutate(group = 0)
+control_subjects = output_csvs[1:10,] %>% 
+  mutate(group = "control") 
+experimental_subjects = output_csvs[11:20,] %>% 
+  mutate(group = "experimental")
+
+new_df = rbind(control_subjects, experimental_subjects)
+
+
+```
+
+
