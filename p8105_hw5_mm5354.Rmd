@@ -79,9 +79,13 @@ output_proportion_test = bind_rows(output_proportion_test) %>%
   mutate(city = proportion_test_data$city) %>%
   select(-method, -alternative)
 ```
+Create a plot that shows the estimates and CIs for each city. Organize cities according to the proportion of unsolved homicides.
 
 ```{r}
+output_proportion_test = output_proportion_test[order(output_proportion_test$estimate), ]
+
 output_proportion_test %>% 
+  mutate(city = fct_reorder(city, estimate)) %>%
   ggplot(aes(x = city, y = estimate, color = city)) +
   geom_point() +
   geom_errorbar(aes(ymin = conf.low , ymax = conf.high), width = 0.25) +
