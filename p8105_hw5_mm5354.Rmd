@@ -73,7 +73,25 @@ for (i in 1:50) {
   output_proportion_test[[i]] = broom::tidy(prop.test(proportion_test_data$num_unsolved_homicides[i],proportion_test_data$total_num_homicides[i]))
 }
 
-cbind.data.frame(proportion_test_data$city, bind_rows(output_proportion_test)[1:6]) 
+#proportion_test_data = tibble(cbind(proportion_test_data$city, bind_rows(output_proportion_test)[1:6]))
+
+output_proportion_test = bind_rows(output_proportion_test) %>% 
+  mutate(city = proportion_test_data$city) %>%
+  select(-method, -alternative)
+```
+
+```{r}
+output_proportion_test %>% 
+  ggplot(aes(x = city, y = estimate, color = city)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low , ymax = conf.high), width = 0.25) +
+  labs(
+      title = "Proportion estimates and CIs for each city",
+      x = "City",
+      y = "Estimate"
+      ) +
+  theme(axis.text.x = element_text(angle = 45, size = 6)) +
+  theme(legend.position = "none")
 ```
 
 
