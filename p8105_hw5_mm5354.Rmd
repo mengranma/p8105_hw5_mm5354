@@ -15,34 +15,77 @@ library(tidyverse)
 csv_load_and_tidy = function(path) {
   
   df = read_csv(path) %>%
-    janitor::clean_names() %>% 
-    mutate(group = 0)
-    mutate(group = str_replace(group, 0))
+    janitor::clean_names()
+  
   df
   
 }
 
 setwd("/Users/nadongma/Desktop/p8105_hw5_mm5354/data")
 
-list_of_csvs = list.files()
+list_of_csvs =  data.frame(list.files()) %>% 
+  separate(list.files.., into = c("group", "subject_ID"), sep = "_")
 
-output_csvs = map(list_of_excels, csv_load_and_tidy) %>% 
+list_of_csvs = list_of_csvs %>% 
+  separate(subject_ID, into = c("Subject_ID"), sep = ".csv") %>% 
+  mutate(path = list.files())
+
+output_csvs = map(list_of_csvs$path, csv_load_and_tidy) %>% 
   bind_rows()
-
-
-```
-
-```{r grouping_control_experimental}
-output_csvs = output_csvs %>% 
-  mutate(group = 0)
-control_subjects = output_csvs[1:10,] %>% 
-  mutate(group = "control") 
-experimental_subjects = output_csvs[11:20,] %>% 
-  mutate(group = "experimental")
-
-new_df = rbind(control_subjects, experimental_subjects)
-
+output_csvs = cbind(output_csvs, list_of_csvs) %>% 
+  select(-path) %>% 
+  unite(Subject_ID, group, Subject_ID, sep = ". ", remove = FALSE)
 
 ```
 
+```{r spaghetti_plot, fig.height=8, dpi=300}
+output_csvs %>%
+  gather(key = week_num, value = outcome, week_1:week_8) %>% 
+  ggplot(aes(x = week_num, y = outcome, color = Subject_ID)) + 
+    geom_point() + geom_line()
+```
+
+#Problem 2
+#####Read and clean the data
+```{r Problem2_import_data}
+tidy_data = 
+  read_csv("/Users/nadongma/Desktop/p8105_hw5_mm5354/homicide_data.csv") %>% 
+  janitor::clean_names() %>% 
+  unite(city_state, city, state, sep = ", ", remove = FALSE)
+
+total_number_homicides = tidy_data %>% 
+  group_by(city) %>%
+  summarize(total_num_homicides = n())
+
+number_unsolved_homicides = tidy_data %>%
+  filter(disposition == "Closed without arrest" | disposition == "Open/No arrest") %>%
+  group_by(city) %>%
+  summarize(num_unsolved_homicides = n())
+  
+proportion_test_data = left_join(total_number_homicides, number_unsolved_homicides)
+  #mutate(proportion = num_unsolved_homicides/total_num_homicides)
+
+#broom::tidy(map2(.x = proportion_test_data$num_unsolved_homicides[1:50], .n = proportion_test_data$total_num_homicides[1:50], .f = prop.test(x = .x, n = .n)))
+
+output_proportion_test = vector("list", length = 50)
+
+for (i in 1:50) {
+  output_proportion_test[[i]] = broom::tidy(prop.test(proportion_test_data$num_unsolved_homicides[i],proportion_test_data$total_num_homicides[i]))
+}
+
+cbind.data.frame(proportion_test_data$city, bind_rows(output_proportion_test)[1:6]) 
+```
+
+
+
+For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
+
+```{r proportion_test_Baltimore}
+Baltimore_proportion_test = broom::tidy(prop.test(number_unsolved_homicides$num_unsolved_homicides[number_unsolved_homicides$city == "Baltimore"],total_number_homicides$total_num_homicides[total_number_homicides$city == "Baltimore"], conf.level = 0.95, correct = TRUE))
+```
+Using the prop.test function to estimate the proportion of homicides that are unsolved: **estimated proportion = `r Baltimore_proportion_test$estimate`, confidence interval = (`r Baltimore_proportion_test$conf.low` , `r Baltimore_proportion_test$conf.high`).**
+
+```{r}
+broom::tidy(prop.test(number_unsolved_homicides$num_unsolved_homicides,total_number_homicides$total_num_homicides, conf.level = 0.95, correct = TRUE))
+```
 
