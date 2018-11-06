@@ -2,7 +2,7 @@
 title: "p8105_hw5_mm5354"
 author: "Mengran Ma"
 date: "2018/11/1"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -24,7 +24,7 @@ csv_load_and_tidy = function(path) {
 setwd("/Users/nadongma/Desktop/p8105_hw5_mm5354/data")
 
 list_of_csvs =  data.frame(list.files()) %>% 
-  separate(list.files.., into = c("group", "subject_ID"), sep = "_")
+  separate(list.files.., into = c("control_arm", "subject_ID"), sep = "_")
 
 list_of_csvs = list_of_csvs %>% 
   separate(subject_ID, into = c("Subject_ID"), sep = ".csv") %>% 
@@ -34,15 +34,25 @@ output_csvs = map(list_of_csvs$path, csv_load_and_tidy) %>%
   bind_rows()
 output_csvs = cbind(output_csvs, list_of_csvs) %>% 
   select(-path) %>% 
-  unite(Subject_ID, group, Subject_ID, sep = ". ", remove = FALSE)
+  unite(Subject_ID, control_arm, Subject_ID, sep = ". ", remove = FALSE)
 
 ```
 
 ```{r spaghetti_plot, fig.height=8, dpi=300}
 output_csvs %>%
   gather(key = week_num, value = outcome, week_1:week_8) %>% 
-  ggplot(aes(x = week_num, y = outcome, color = Subject_ID)) + 
-    geom_point() + geom_line()
+  ggplot(aes(x = week_num, y = outcome, color = Subject_ID, group = Subject_ID)) + 
+    geom_point() + 
+    geom_line() + 
+    facet_grid(~control_arm) +
+    theme(axis.text.x = element_text(angle = 45, size = 6)) +
+    theme(legend.position = "bottom") +
+    labs(
+      title = "Spaghetti plot showing observations on each subject over time",
+      x = "Week Number",
+      y = "Outcome for each subject"
+      ) 
+  
 ```
 
 #Problem 2
@@ -54,39 +64,44 @@ tidy_data =
   unite(city_state, city, state, sep = ", ", remove = FALSE)
 
 total_number_homicides = tidy_data %>% 
-  group_by(city) %>%
+  group_by(city_state) %>%
   summarize(total_num_homicides = n())
 
 number_unsolved_homicides = tidy_data %>%
   filter(disposition == "Closed without arrest" | disposition == "Open/No arrest") %>%
-  group_by(city) %>%
-  summarize(num_unsolved_homicides = n())
+  group_by(city_state) %>%
+  summarize(num_unsolved_homicides = n()) 
   
-proportion_test_data = left_join(total_number_homicides, number_unsolved_homicides)
-  #mutate(proportion = num_unsolved_homicides/total_num_homicides)
+proportion_test_data = left_join(total_number_homicides, number_unsolved_homicides) 
 
-#broom::tidy(map2(.x = proportion_test_data$num_unsolved_homicides[1:50], .n = proportion_test_data$total_num_homicides[1:50], .f = prop.test(x = .x, n = .n)))
+proportion_test_data[is.na(proportion_test_data)] <- 0
 
-output_proportion_test = vector("list", length = 50)
+proportion_test_output = map2(.x = proportion_test_data$num_unsolved_homicides, .y = proportion_test_data$total_num_homicides, ~prop.test(.x, .y))
 
-for (i in 1:50) {
-  output_proportion_test[[i]] = broom::tidy(prop.test(proportion_test_data$num_unsolved_homicides[i],proportion_test_data$total_num_homicides[i]))
-}
+proportion_test_output = map_df(.x = proportion_test_output, ~broom::tidy(.x)) %>% 
+  mutate(city_state = proportion_test_data$city_state) %>%
+  select(-method, -alternative)
+
+#output_proportion_test = vector("list", length = 50)
+
+#for (i in 1:50) {
+  #output_proportion_test[[i]] = broom::tidy(prop.test(proportion_test_data$num_unsolved_homicides[i],proportion_test_data$total_num_homicides[i]))
+#}
 
 #proportion_test_data = tibble(cbind(proportion_test_data$city, bind_rows(output_proportion_test)[1:6]))
 
-output_proportion_test = bind_rows(output_proportion_test) %>% 
-  mutate(city = proportion_test_data$city) %>%
-  select(-method, -alternative)
+#output_proportion_test = bind_rows(output_proportion_test) %>% 
+  
 ```
+
+
+
 Create a plot that shows the estimates and CIs for each city. Organize cities according to the proportion of unsolved homicides.
 
 ```{r}
-output_proportion_test = output_proportion_test[order(output_proportion_test$estimate), ]
-
-output_proportion_test %>% 
-  mutate(city = fct_reorder(city, estimate)) %>%
-  ggplot(aes(x = city, y = estimate, color = city)) +
+proportion_test_output %>% 
+  mutate(city_state = fct_reorder(city_state, estimate)) %>%
+  ggplot(aes(x = city_state, y = estimate, color = city_state)) +
   geom_point() +
   geom_errorbar(aes(ymin = conf.low , ymax = conf.high), width = 0.25) +
   labs(
