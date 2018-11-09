@@ -42,7 +42,8 @@ Tidy the result; manipulate file names to include control arm and subject ID, ma
 ```{r final_dataset}
 output_csvs = cbind(output_csvs, list_of_csvs) %>%
   select(-path) %>% 
-  unite(Subject_ID, control_arm, Subject_ID, sep = ". ", remove = FALSE)
+  unite(Subject_ID, control_arm, Subject_ID, sep = ". ", remove = FALSE) %>% 
+  gather(key = week_num, value = outcome, week_1:week_8) 
 
 ```
 
@@ -50,7 +51,6 @@ output_csvs = cbind(output_csvs, list_of_csvs) %>%
 Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
 ```{r spaghetti_plot, fig.height=6, dpi=300}
 output_csvs %>%
-  gather(key = week_num, value = outcome, week_1:week_8) %>% 
   ggplot(aes(x = week_num, y = outcome, color = Subject_ID, group = Subject_ID)) + 
     geom_point() + 
     geom_line() + 
@@ -131,6 +131,6 @@ proportion_test_output %>%
       x = "City",
       y = "Estimate"
       ) +
-  theme(axis.text.x = element_text(angle = 45, size = 6)) +
+  theme(axis.text.x = element_text(angle = 90, size = 6)) +
   theme(legend.position = "none")
 ```
